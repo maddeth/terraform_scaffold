@@ -1,0 +1,16 @@
+# Pipeline 2: dev
+# Trigger on merges to main. One stage, one subscription.
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr: none
+
+extends:
+  template: templates/deploy-stage.yml
+  parameters:
+    envName: dev
+    serviceConnection: sc-dev
+    variableGroup: vg-dev

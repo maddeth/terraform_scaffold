@@ -1,0 +1,37 @@
+# Pipeline 3: prod
+# Manual trigger (or tag-based). Fans out to 4 subscriptions as 4 stages.
+# Each stage uses the SAME template — only parameters differ.
+#
+# Approvals are configured on the ADO Environments (prod-env-1..4), not here.
+# Stages run sequentially by default via dependsOn — change to [] for parallel.
+
+trigger: none
+pr: none
+
+stages:
+  - template: templates/deploy-stage.yml
+    parameters:
+      envName: prod-env-1
+      serviceConnection: sc-prod-env-1
+      variableGroup: vg-prod-env-1
+
+  - template: templates/deploy-stage.yml
+    parameters:
+      envName: prod-env-2
+      serviceConnection: sc-prod-env-2
+      variableGroup: vg-prod-env-2
+      dependsOn: [deploy_prod_env_1]
+
+  - template: templates/deploy-stage.yml
+    parameters:
+      envName: prod-env-3
+      serviceConnection: sc-prod-env-3
+      variableGroup: vg-prod-env-3
+      dependsOn: [deploy_prod_env_2]
+
+  - template: templates/deploy-stage.yml
+    parameters:
+      envName: prod-env-4
+      serviceConnection: sc-prod-env-4
+      variableGroup: vg-prod-env-4
+      dependsOn: [deploy_prod_env_3]

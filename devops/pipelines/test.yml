@@ -1,0 +1,16 @@
+# Pipeline 1: test
+# Trigger on PRs / feature branches. One stage, one subscription.
+
+trigger: none
+
+pr:
+  branches:
+    include:
+      - main
+
+extends:
+  template: templates/deploy-stage.yml
+  parameters:
+    envName: test
+    serviceConnection: sc-test
+    variableGroup: vg-test

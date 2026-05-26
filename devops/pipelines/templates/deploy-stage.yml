@@ -1,0 +1,67 @@
+# Shared stage template. Called by test.yml, dev.yml, prod.yml.
+# Every environment-specific value is a parameter — no env logic lives here.
+
+parameters:
+  - name: envName            # e.g. 'test', 'dev', 'prod-env-1'
+    type: string
+  - name: serviceConnection  # e.g. 'sc-prod-env-1'
+    type: string
+  - name: variableGroup      # e.g. 'vg-prod-env-1'
+    type: string
+  - name: dependsOn          # optional — for sequencing prod stages
+    type: object
+    default: []
+
+stages:
+  - stage: deploy_${{ replace(parameters.envName, '-', '_') }}
+    displayName: Deploy ${{ parameters.envName }}
+    dependsOn: ${{ parameters.dependsOn }}
+    variables:
+      - group: ${{ parameters.variableGroup }}
+    jobs:
+      - deployment: terraform_apply
+        displayName: Terraform Apply (${{ parameters.envName }})
+        environment: ${{ parameters.envName }}   # ADO Environment — approvals attach here
+        pool:
+          vmImage: ubuntu-latest
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: AzureCLI@2
+                  displayName: Terraform Init
+                  inputs:
+                    azureSubscription: ${{ parameters.serviceConnection }}
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      cd devops/terraform/main
+                      terraform init \
+                        -backend-config="key=${{ parameters.envName }}.tfstate" \
+                        -backend-config="storage_account_name=$(tfStateStorageAccount)" \
+                        -backend-config="container_name=$(tfStateContainer)" \
+                        -backend-config="resource_group_name=$(tfStateResourceGroup)"
+
+                - task: AzureCLI@2
+                  displayName: Terraform Plan
+                  inputs:
+                    azureSubscription: ${{ parameters.serviceConnection }}
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      cd devops/terraform/main
+                      terraform plan \
+                        -var-file=../environments/${{ parameters.envName }}.tfvars \
+                        -out=tfplan
+
+                - task: AzureCLI@2
+                  displayName: Terraform Apply
+                  inputs:
+                    azureSubscription: ${{ parameters.serviceConnection }}
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      cd devops/terraform/main
+                      terraform apply -auto-approve tfplan
